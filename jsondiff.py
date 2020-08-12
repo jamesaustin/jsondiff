@@ -87,20 +87,18 @@ def jsondiff(_d1, _d2, ignore=frozenset(), set_sort=True):
 
 
 def fixup_keys(data):
-    def helper(data, dictionary):
-        if isinstance(data, dict):
-            ret = {}
-            for k, v in data.items():
-                ret[dictionary[k].decode("utf-8")] = helper(v, dictionary)
-            return ret
-        if isinstance(data, list):
-            ret = []
-            for v in data:
-                ret.append(helper(v, dictionary))
-            return ret
-        return data
+    assert(isinstance(data, list) and len(data) == 2 and isinstance(data[1], list))
+    obj, keys = data[0], [k.decode("utf-8") for k in data[1]]
 
-    return helper(data[0], data[1])
+    def helper(d):
+        if isinstance(d, dict):
+            return {keys[k]: helper(v) for k, v in d.items()}
+        elif isinstance(d, list):
+            return [helper(v) for v in d]
+        else:
+            return d
+
+    return helper(obj)
 
 
 def parse_args():
@@ -110,6 +108,7 @@ def parse_args():
     parser.add_argument("--set-sort", action="store_true")
     parser.add_argument("--fixup-keys", action="store_true")
     parser.add_argument("--dump-fixedup", action="store_true")
+    parser.add_argument("--dump-counts", action="store_true")
     group = parser.add_argument_group("debugging options")
     group.add_argument("--verbose", "-v", action="store_true")
     group.add_argument("--debug", action="store_true")
@@ -149,6 +148,20 @@ def main():
         if args.dump_fixedup:
             with open(f"_{path_basename(name)}.json", "w") as f:
                 json_dump(d, f, cls=BytesEncoder, sort_keys=True, separators=(",", ": "), indent=2)
+
+        if args.dump_counts:
+            with open(f"_{path_basename(name)}.counts", "w") as f:
+                def _dump_counts(obj, path="/"):
+                    if isinstance(obj, dict):
+                        print(f"{len(obj):6}: {path}", file=f)
+                        for k, v in obj.items():
+                            _dump_counts(v, path_join(path, k))
+                    elif isinstance(obj, list):
+                        print(f"{len(obj):6}: {path}", file=f)
+                        for n, v in enumerate(obj):
+                            _dump_counts(v, path_join(path, str(n)))
+                _dump_counts(d)
+
 
         return d
 

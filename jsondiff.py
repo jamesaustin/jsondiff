@@ -87,7 +87,7 @@ def jsondiff(_d1, _d2, ignore=frozenset(), set_sort=True):
 
 
 def fixup_keys(data):
-    assert(isinstance(data, list) and len(data) == 2 and isinstance(data[1], list))
+    assert isinstance(data, list) and len(data) == 2 and isinstance(data[1], list)
     obj, keys = data[0], [k.decode("utf-8") for k in data[1]]
 
     def helper(d):
@@ -151,6 +151,7 @@ def main():
 
         if args.dump_counts:
             with open(f"_{path_basename(name)}.counts", "w") as f:
+
                 def _dump_counts(obj, path="/"):
                     if isinstance(obj, dict):
                         print(f"{len(obj):6}: {path}", file=f)
@@ -160,8 +161,8 @@ def main():
                         print(f"{len(obj):6}: {path}", file=f)
                         for n, v in enumerate(obj):
                             _dump_counts(v, path_join(path, str(n)))
-                _dump_counts(d)
 
+                _dump_counts(d)
 
         return d
 

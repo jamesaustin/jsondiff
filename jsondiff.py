@@ -138,19 +138,19 @@ def main():
                 json_dump(d, f, cls=BytesEncoder, sort_keys=True, separators=(",", ": "), indent=2)
 
         if args.dump_counts:
+            def iter_counts(obj, path="/"):
+                if isinstance(obj, dict):
+                    yield len(obj), path
+                    for k, v in obj.items():
+                        yield from iter_counts(v, path_join(path, k))
+                elif isinstance(obj, list):
+                    yield len(obj), path
+                    for n, v in enumerate(obj):
+                        yield from iter_counts(v, path_join(path, str(n)))
+
             with open(f"_{path_basename(name)}.counts", "w") as f:
-
-                def _dump_counts(obj, path="/"):
-                    if isinstance(obj, dict):
-                        print(f"{len(obj):6}: {path}", file=f)
-                        for k, v in obj.items():
-                            _dump_counts(v, path_join(path, k))
-                    elif isinstance(obj, list):
-                        print(f"{len(obj):6}: {path}", file=f)
-                        for n, v in enumerate(obj):
-                            _dump_counts(v, path_join(path, str(n)))
-
-                _dump_counts(d)
+                for n, path in iter_counts(d):
+                    print(f"{n:6}: {path}", file=f)
 
         return d
 

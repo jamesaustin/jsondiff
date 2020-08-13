@@ -14,18 +14,6 @@ import logging
 LOG = logging.getLogger(__name__)
 
 
-class UniqueDict(dict):
-    def __init__(self, generator):
-        super().__init__()
-        for k, v in generator:
-            valid_key = k
-            counter = 0
-            while valid_key in self:
-                valid_key = f"{k}.{counter}"
-                counter += 1
-            self[valid_key] = v
-
-
 def jsondiff(_d1, _d2, ignore=frozenset(), set_sort=True):
     def _ignore(path):
         for f in ignore:
@@ -41,14 +29,14 @@ def jsondiff(_d1, _d2, ignore=frozenset(), set_sort=True):
             for k in k1 - k2:
                 key = path_join(path, str(k))
                 if not _ignore(key):
-                    print("-{}".format(key))
+                    yield "-{}".format(key)
             for k in k1 & k2:
                 key = path_join(path, str(k))
-                diff(d1[k], d2[k], key)
+                yield from diff(d1[k], d2[k], key)
             for k in k2 - k1:
                 key = path_join(path, str(k))
                 if not _ignore(key):
-                    print("+{}".format(key))
+                    yield "+{}".format(key)
         elif (
             set_sort
             and isinstance(d1, list)
@@ -61,29 +49,29 @@ def jsondiff(_d1, _d2, ignore=frozenset(), set_sort=True):
             for d in d1 - d2:
                 key = path_join(path, str(d))
                 if not _ignore(key):
-                    print("-{}".format(key))
+                    yield "-{}".format(key)
             for d in d2 - d1:
                 key = path_join(path, str(d))
                 if not _ignore(key):
-                    print("+{}".format(key))
+                    yield "+{}".format(key)
         elif isinstance(d1, list) and isinstance(d2, list):
             n1, n2 = len(d1), len(d2)
             if n1 < n2:
-                print("+{}/[{}]/...".format(path, n2 - n1))
+                yield "+{}/[{}]/...".format(path, n2 - n1)
             elif n1 > n2:
-                print("-{}/[{}]".format(path, n1 - n2))
+                yield "-{}/[{}]".format(path, n1 - n2)
             for n, (v1, v2) in enumerate(zip(d1, d2)):
                 key = path_join(path, str(n))
-                diff(v1, v2, path_join(path, key))
+                yield from diff(v1, v2, path_join(path, key))
         elif not (isinstance(d1, Number) and isinstance(d2, Number)) and type(d1) != type(d2):
-            print('!{}: {}"{}" -> {}"{}"'.format(path, type(d1), d1, type(d2), d2))
+            yield '!{}: {}"{}" -> {}"{}"'.format(path, type(d1), d1, type(d2), d2)
         elif isinstance(d1, float) and isinstance(d2, float):
             if not isclose(d1, d2, abs_tol=0.00001):
-                print("~{}: {}f -> {}f".format(path, d1, d2))
+                yield "~{}: {}f -> {}f".format(path, d1, d2)
         elif d1 != d2:
-            print('~{}: {}"{}" -> {}"{}"'.format(path, type(d1), d1, type(d2), d2))
+            yield '~{}: {}"{}" -> {}"{}"'.format(path, type(d1), d1, type(d2), d2)
 
-    diff(_d1, _d2, "/")
+    yield from diff(_d1, _d2, "/")
 
 
 def fixup_keys(data):
@@ -169,7 +157,8 @@ def main():
     base = load(args.json[0])
     for f in args.json[1:]:
         j = load(f)
-        jsondiff(base, j, args.ignore, args.set_sort)
+        for difference in jsondiff(base, j, args.ignore, args.set_sort):
+            print(difference)
 
 
 if __name__ == "__main__":
